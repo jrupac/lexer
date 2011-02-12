@@ -1,14 +1,40 @@
 import java.util.*;
+import java.io.*;
 
-public class Parser
+/**
+ * This program is a lexer for a straight-line program that is the subset of ML.
+ *
+ * @author Ajay Roopakalu
+ */
+public class Lexer
 {
-    public Parser()
+    /**
+     * Perform lexical analysis on the file given by filename
+     *
+     * @param filename Name of source file to be parsed
+     */
+    public Lexer(String filename)
     {
-        Scanner in = new Scanner(System.in);
-        System.out.println(parse(in.nextLine().replaceAll(" ", "")));
+        try 
+        {
+            Scanner in = new Scanner(new File(filename));
+            System.out.println(parseStm(in.nextLine().replaceAll(" ", "")));
+        }
+        catch (IOException ioe)
+        {
+            ioe.printStackTrace();
+            System.exit(-3);
+        }
     }
 
-    public static Object parse(Object o)
+    /**
+     * Parse the given object as a statement and return the complete sub-tree
+     * of this statement.
+     *
+     * @param o Object being parsed
+     * @return Complete sub-tree of statement o
+     */
+    public static Object parseStm(Object o)
     {
        if (!(o instanceof String))
            return o;
@@ -16,7 +42,7 @@ public class Parser
         String s = (String)o;
 
         if (s.charAt(0) == '(')
-            return Parser.parseExp(s);
+            return Lexer.parseExp(s);
 
         int pos = s.indexOf(";");
         if (pos > 0)
@@ -30,9 +56,16 @@ public class Parser
         if (pos >= 0)
             return new Print(s.substring(pos+6, s.length()-1).split(",")); 
         else
-            return Parser.parseExp(s);
+            return Lexer.parseExp(s);
     }
 
+    /**
+     * Parse the given object as a statement and return the complete sub-tree
+     * of this expression.
+     *
+     * @param o Object being parsed
+     * @return Complete sub-tree of expression o
+     */
     public static Object parseExp(Object o)
     {
        if (!(o instanceof String))
@@ -44,15 +77,12 @@ public class Parser
         if (s.charAt(0) == '(')
         {
             pos = getFirstComma(s);
-            pos = s.indexOf(")");
-            if (pos > 0 && pos < s.length()-1)
-                pos += s.substring(pos).indexOf(',');
-            else
-                pos = s.indexOf(",");
 
             if (pos < 0)
             {
                 System.err.println("ERROR: Ill-formed EseqExp expression");
+                System.err.println("\t" + s);
+                System.exit(-1);
                 return null;
             }
 
@@ -74,10 +104,44 @@ public class Parser
         
         // Control should never reach here
         System.err.println("ERROR: Ill-formed expression");
-        System.err.println(s);
+        System.err.println("\t" + s);
+        System.exit(-1);
         return null;
     }
 
+    /**
+     * Return location of the end of the first argument.
+     *
+     * @param s String being parsed
+     * @return Location of the end of the first argument, 0 if not found
+     */
+    private static int getFirstComma(String s)
+    {
+        int len = s.length();
+        int parenStack = 0;
+
+        for (int i = 1; i < len; i++)
+        {
+            switch (s.charAt(i))
+            {
+                case '(': parenStack++;
+                          break;
+                case ')': parenStack--;
+                          break;
+                case ',': if (parenStack == 0)
+                            return i;
+            }
+        }
+
+        return 0;
+    }
+
+    /**
+     * Return the location of the first binary operation when parsed left-to-right.
+     *
+     * @param str String being parsed
+     * @return Location of first binary operation, -1 if not found
+     */
     private static int findFirstOp(String str)
     {
         int a = str.indexOf("+");
@@ -85,7 +149,7 @@ public class Parser
         int m = str.indexOf("*");
         int d = str.indexOf("/");
 
-        int min = 1000;
+        int min = Integer.MAX_VALUE;
 
         if (a > 0 && a < min)
             min = a;
@@ -96,17 +160,27 @@ public class Parser
         if (d > 0 && d < min)
             min = d;
 
-        if (min == 1000)
-            return -1;
-        return min;
+        return (min == Integer.MAX_VALUE) ? -1 : min;
     }
 
+    /**
+     * Run the lexer on the file given by the first argument.
+     */
     public static void main(String args[])
     {
-        new Parser();
+        if (args.length != 1)
+        {
+            System.out.println("Usage: java Lexer filename");
+            System.exit(-2);
+        }
+
+        new Lexer(args[0]);
     }
 }
 
+/**
+ * Expression representing a numerical value
+ */
 class NumExp
 {
     int i;
@@ -116,6 +190,9 @@ class NumExp
     public String toString() { return "NumExp " + i; }
 }
 
+/**
+ * Expression representing a identifier
+ */
 class IdExp
 {
     String s;
@@ -125,14 +202,17 @@ class IdExp
     public String toString() { return "IdExp \"" + s + "\""; }
 }
 
+/**
+ * Expression representing a type with a statement and an expression
+ */
 class EseqExp
 {
     Object o1, o2;
 
     public EseqExp(Object O1, Object O2)
     {
-        o1 = Parser.parse(O1);
-        o2 = Parser.parseExp(O2);
+        o1 = Lexer.parseStm(O1);
+        o2 = Lexer.parseExp(O2);
     }
 
     public String toString() 
@@ -141,15 +221,18 @@ class EseqExp
     }
 }
 
+/**
+ * Expression representing binary operation between two expressions
+ */
 class OpExp
 {
     Object o1, o2;
-    String op;
+    String op = null;
 
     public OpExp(Object O1, String s, Object O2)
     {
-        o1 = Parser.parseExp(O1);
-        o2 = Parser.parseExp(O2);
+        o1 = Lexer.parseExp(O1);
+        o2 = Lexer.parseExp(O2);
 
         if (s.equals("+"))
             op = "Plus";
@@ -159,6 +242,14 @@ class OpExp
             op = "Times";
         if (s.equals("/"))
             op = "Div";
+       
+        // control should never reach here
+        if (op == null)
+        {
+            System.err.println("ERROR: Unknown binary operation: ");
+            System.err.println("\t" + op);
+            System.exit(-1);
+        }
     }
 
     public String toString() 
@@ -167,14 +258,17 @@ class OpExp
     }
 }
 
+/**
+ * Statement representing two statements
+ */
 class Compound
 {
     Object o1, o2;
 
     public Compound(Object O1, Object O2) 
     {
-        o1 = Parser.parse(O1);
-        o2 = Parser.parse(O2);
+        o1 = Lexer.parseStm(O1);
+        o2 = Lexer.parseStm(O2);
     }
 
     public String toString() 
@@ -183,14 +277,17 @@ class Compound
     }
 }
 
+/**
+ * Statement representing the assignment of an expression to a statement
+ */
 class Assign
 {
     Object o1, o2;
 
     public Assign(Object O1, Object O2)
     {
-        o1 = Parser.parse(O1);
-        o2 = Parser.parse(O2);
+        o1 = Lexer.parseExp(O1);
+        o2 = Lexer.parseStm(O2);
     }
 
     public String toString() 
@@ -199,6 +296,9 @@ class Assign
     }
 }
 
+/**
+ * Statement representing a print() statement with a list of expressions
+ */
 class Print
 {
     Object[] o;
@@ -207,7 +307,7 @@ class Print
     { 
         o = new Object[O.length];
         for (int i = 0; i < O.length; i++)
-            o[i] = Parser.parse(O[i]);
+            o[i] = Lexer.parseStm(O[i]);
     }
 
     public String toString() 
