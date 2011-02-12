@@ -18,7 +18,11 @@ public class Lexer
         try 
         {
             Scanner in = new Scanner(new File(filename));
+            System.out.println("structure TestProg = struct");
+            System.out.println("structure S = SLP");
+            System.out.println("val prog = ");
             System.out.println(parseStm(in.nextLine().replaceAll(" ", "")));
+            System.out.println("end");
         }
         catch (IOException ioe)
         {
@@ -187,7 +191,7 @@ class NumExp
 
     public NumExp(Object s) { i = Integer.parseInt((String)s); }
 
-    public String toString() { return "NumExp " + i; }
+    public String toString() { return "S.NumExp " + i; }
 }
 
 /**
@@ -199,7 +203,7 @@ class IdExp
 
     public IdExp(String s) { this.s = (String)s; }
 
-    public String toString() { return "IdExp \"" + s + "\""; }
+    public String toString() { return "S.IdExp \"" + s + "\""; }
 }
 
 /**
@@ -217,7 +221,7 @@ class EseqExp
 
     public String toString() 
     { 
-        return "EseqExp(" + o1.toString() + "," + o2.toString() + ")"; 
+        return "S.EseqExp(" + o1.toString() + "," + o2.toString() + ")"; 
     }
 }
 
@@ -235,13 +239,13 @@ class OpExp
         o2 = Lexer.parseExp(O2);
 
         if (s.equals("+"))
-            op = "Plus";
+            op = "S.Plus";
         if (s.equals("-"))
-            op = "Minus";
+            op = "S.Minus";
         if (s.equals("*"))
-            op = "Times";
+            op = "S.Times";
         if (s.equals("/"))
-            op = "Div";
+            op = "S.Div";
        
         // control should never reach here
         if (op == null)
@@ -254,7 +258,7 @@ class OpExp
 
     public String toString() 
     { 
-        return "OpExp(" + o1.toString() + "," + op + "," +  o2.toString() + ")"; 
+        return "S.OpExp(" + o1.toString() + "," + op + "," +  o2.toString() + ")"; 
     }
 }
 
@@ -273,7 +277,7 @@ class Compound
 
     public String toString() 
     { 
-        return "CompoundStm(" + o1.toString() + "," + o2.toString() + ")";
+        return "S.CompoundStm(" + o1.toString() + "," + o2.toString() + ")";
     }
 }
 
@@ -282,17 +286,18 @@ class Compound
  */
 class Assign
 {
-    Object o1, o2;
+    String o1;
+    Object o2;
 
-    public Assign(Object O1, Object O2)
+    public Assign(String O1, Object O2)
     {
-        o1 = Lexer.parseExp(O1);
+        o1 = O1;
         o2 = Lexer.parseStm(O2);
     }
 
     public String toString() 
     { 
-        return "AssignStm(" + o1.toString() + "," + o2.toString() + ")";
+        return "S.AssignStm(" + "\"" + o1.toString() + "\"" + "," + o2.toString() + ")";
     }
 }
 
@@ -312,7 +317,7 @@ class Print
 
     public String toString() 
     { 
-        String ret = "PrintStm[";
+        String ret = "S.PrintStm[";
 
         for (int i = 0; i < o.length; i++)
             ret += o[i].toString() + ((i == o.length - 1) ? "" : ",");
